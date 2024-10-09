@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Son Depremler</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* 3 ve üzeri büyüklükteki depremleri kırmızı ve kalın göster */
+        .high-magnitude {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Son Depremler</h1>
+
+        <!-- Büyüklüğe göre arama input alanı -->
+        <div class="form-group">
+            <label for="buyuklukArama">Büyüklüğe Göre Arama (örn: 4.0)</label>
+            <input type="number" step="0.1" id="buyuklukArama" class="form-control" placeholder="Büyüklük girin" oninput="filtreleriUygula()">
+        </div>
+
+        <!-- Şehire göre arama seçeneği -->
+        <div class="form-group">
+            <label for="sehirArama">Şehire Göre Arama</label>
+            <select id="sehirArama" class="form-control" onchange="filtreleriUygula()">
+                <option value="">Tüm Şehirler</option>
+                <!-- Şehir seçenekleri dinamik olarak yüklenecek -->
+            </select>
+        </div>
+
+        <!-- Sıralama Seçim Alanı -->
+        <div class="form-group">
+            <label for="siralama">Sıralama Seçenekleri</label>
+            <select id="siralama" class="form-control" onchange="siralamaYap()">
+                <option value="tarihYeni">Tarihe Göre (En Yeni)</option>
+                <option value="tarihEski">Tarihe Göre (En Eski)</option>
+                <option value="buyuklukBuyuk">Büyüklüğe Göre (Büyükten Küçüğe)</option>
+                <option value="buyuklukKucuk">Büyüklüğe Göre (Küçükten Büyüğe)</option>
+            </select>
+        </div>
+
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tarih</th>
+                    <th>Saat</th>
+                    <th>Yer</th>
+                    <th>Büyüklük</th>
+                </tr>
+            </thead>
+            <tbody id="deprem-listesi">
+                <!-- Deprem verileri buraya eklenecek -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const depremListesi = document.getElementById('deprem-listesi');
+        let depremVerileri = []; // Deprem verilerini saklayacağımız dizi
+        let sehirListesi = new Set(); // Şehir listesi için Set
+
+        // Ayları metin olarak gösteren bir dizi
+        const aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+        // Tarih formatını "gün ay yıl" ve saat olarak düzenleyen fonksiyon
+        function formatTarihSaat(tarihSaat) {
+            const [tarih, saat] = tarihSaat.split(' '); // Tarih ve saat kısmını ayır
+            const [yil, ay, gun] = tarih.split(/[-.]/); // Yıl, ay ve günü ayır
+            const ayIsmi = aylar[parseInt(ay) - 1]; // Ay ismini al
+            return {
+                tarih: `${gun} ${ayIsmi} ${yil}`, // "gün ay yıl" formatı
+                saat // Saat bilgisi
+            };
+        }
+
+        // Depremleri tabloya ekleyen fonksiyon
+        function depremleriGoster(filteredVeri) {
+            depremListesi.innerHTML = ''; // Tabloyu temizle
+            filteredVeri.forEach((deprem, index) => {
+                const formatted = formatTarihSaat(deprem.date_time);
+                const magnitudeClass = deprem.mag >= 3 ? 'high-magnitude' : ''; // 3 ve üzeri büyüklük için sınıf ekle
+
+                const satir = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${formatted.tarih}</td>
+                        <td>${formatted.saat}</td>
+                        <td>${deprem.title}</td>
+                        <td class="${magnitudeClass}">${deprem.mag}</td>
+                    </tr>
+                `;
+                depremListesi.insertAdjacentHTML('beforeend', satir);
+            });
+        }
+
+        // Büyüklüğe ve şehire göre filtreleme yapan fonksiyon
+        function filtreleriUygula() {
+            const buyuklukArama = document.getElementById('buyuklukArama').value;
+            const sehirArama = document.getElementById('sehirArama').value;
+
+            let filteredVeri = depremVerileri;
+
+            // Büyüklük filtresi
+            if (buyuklukArama) {
+                filteredVeri = filteredVeri.filter(deprem => deprem.mag >= parseFloat(buyuklukArama));
+            }
+
+            // Şehir filtresi
+            if (sehirArama) {
+                filteredVeri = filteredVeri.filter(deprem => deprem.title.includes(sehirArama));
+            }
+
+            depremleriGoster(filteredVeri); // Filtrelenmiş depremleri göster
+        }
+
+        // Seçilen sıralama türüne göre depremleri sıralayan fonksiyon
+        function siralamaYap() {
+            const siralamaSecim = document.getElementById('siralama').value;
+            
+            switch (siralamaSecim) {
+                case 'tarihYeni':
+                    depremVerileri.sort((a, b) => new Date(b.date_time) - new Date(a.date_time));
+                    break;
+                case 'tarihEski':
+                    depremVerileri.sort((a, b) => new Date(a.date_time) - new Date(b.date_time));
+                    break;
+                case 'buyuklukBuyuk':
+                    depremVerileri.sort((a, b) => b.mag - a.mag);
+                    break;
+                case 'buyuklukKucuk':
+                    depremVerileri.sort((a, b) => a.mag - b.mag);
+                    break;
+            }
+
+            filtreleriUygula(); // Büyüklük ve şehir filtrelerini de uygula
+        }
+
+        // Şehir listesini dinamik olarak oluşturma fonksiyonu
+        function sehirListesiniYukle() {
+            const sehirArama = document.getElementById('sehirArama');
+            sehirListesi.forEach(sehir => {
+                const option = document.createElement('option');
+                option.value = sehir;
+                option.textContent = sehir;
+                sehirArama.appendChild(option);
+            });
+        }
+
+        // Depremleri çekme ve listeleme fonksiyonu
+        async function depremleriCek() {
+            try {
+                const response = await fetch('https://api.orhanaydogdu.com.tr/deprem/kandilli/live');
+                const data = await response.json();
+
+                if (data.result && Array.isArray(data.result)) {
+                    depremVerileri = data.result; // Tüm depremleri al
+                    // Şehir listesini güncelle
+                    depremVerileri.forEach(deprem => sehirListesi.add(deprem.title.split(' ')[0]));
+                    sehirListesiniYukle(); // Şehir listesi oluştur
+                    siralamaYap(); // Varsayılan sıralama işlemi
+                } else {
+                    console.error('Veri formatı beklenmiyor:', data);
+                }
+
+            } catch (error) {
+                console.error('Deprem verileri alınırken hata oluştu:', error);
+            }
+        }
+
+        // İlk yüklemede depremleri çek ve göster
+        depremleriCek();
+        setInterval(depremleriCek, 3600000); // Her 1 saatte bir güncelle
+    </script>
+</body>
+</html>
